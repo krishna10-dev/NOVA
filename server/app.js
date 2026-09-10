@@ -2,7 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
+
 const connectDatabase = require("./src/config/database");
+
 const authRoutes = require("./src/routes/authRoutes");
 const projectRoutes = require("./src/routes/projectRoutes");
 const taskRoutes = require("./src/routes/taskRoutes");
@@ -17,32 +19,7 @@ const {
 
 const app = express();
 
-let databaseConnection;
-
-const ensureDatabaseConnection = async () => {
-  if (databaseConnection) {
-    return databaseConnection;
-  }
-
-  databaseConnection = connectDatabase();
-
-  return databaseConnection;
-};
-
-app.use(async (req, res, next) => {
-  try {
-    await ensureDatabaseConnection();
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
 app.use(helmet());
-
-/* -----------------------------
-   CORS
------------------------------ */
 
 app.use(
   cors({
@@ -53,17 +30,20 @@ app.use(
   })
 );
 
-/* -----------------------------
-   Body parsing
------------------------------ */
-
 app.use(express.json());
-
 app.use(cookieParser());
 
-/* -----------------------------
-   Basic routes
------------------------------ */
+/* Database connection */
+app.use(async (req, res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* Routes */
 
 app.get("/", (req, res) => {
   res.json({
@@ -77,8 +57,7 @@ app.get("/api", (req, res) => {
     success: true,
     name: "NOVA",
     version: "1.0.0",
-    description:
-      "Team productivity platform"
+    description: "Team productivity platform"
   });
 });
 
@@ -89,39 +68,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-/* -----------------------------
-   API routes
------------------------------ */
-
-app.use(
-  "/api/auth",
-  authLimiter,
-  authRoutes
-);
-
-app.use(
-  "/api/projects",
-  projectRoutes
-);
-
-app.use(
-  "/api/projects",
-  taskRoutes
-);
-
-app.use(
-  "/api/projects",
-  memberRoutes
-);
-
-app.use(
-  "/api/dashboard",
-  dashboardRoutes
-);
-
-/* -----------------------------
-   Error handler
------------------------------ */
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/projects", taskRoutes);
+app.use("/api/projects", memberRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(errorHandler);
 
